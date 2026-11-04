@@ -1,0 +1,160 @@
+WIDTH=16;
+DEPTH=2048;
+
+ADDRESS_RADIX=HEX;
+DATA_RADIX=HEX;
+
+CONTENT BEGIN
+0000: 1800; -- 	LOADI  0
+0001: 1088; -- 	STORE  Score
+0002: 9805; -- 	OUT    Hex1 
+0003: 9804; -- 	OUT    Hex0
+0004: 9802; -- 	OUT    Timer  
+0005: 8047; -- 	CALL   Poll
+0006: 7805; -- 	JNZ    WaitAllDown 
+0007: 0886; -- 	LOAD   Rand
+0008: 3001; -- 	ADDI   1
+0009: 1086; -- 	STORE  Rand       
+000A: 8047; -- 	CALL   Poll
+000B: 7007; -- 	JZERO  GenRandom   
+000C: 2892; -- 	SUB    Bit9
+000D: 7805; -- 	JNZ    WaitAllDown  
+000E: 0886; -- 	LOAD   Rand
+000F: 1087; -- 	STORE  Num
+0010: 9804; -- 	OUT    Hex0     
+0011: 0887; -- 	LOAD   Num
+0012: 7041; -- 	JZERO  EndRound    
+0013: 8061; -- 	CALL   FindMax    
+0014: 8047; -- 	CALL   Poll
+0015: 108A; -- 	STORE  Sw
+0016: 088A; -- 	LOAD   Sw
+0017: 3891; -- 	AND    Bit3
+0018: 7021; -- 	JZERO  Chk2
+0019: 0887; -- 	LOAD   Num
+001A: 501C; -- 	SHIFT  -12
+001B: 388D; -- 	AND    LowNib
+001C: 108B; -- 	STORE  Digit
+001D: 0893; -- 	LOAD   Mask3
+001E: 108C; -- 	STORE  ClrMask
+001F: 8051; -- 	CALL   TryDigit
+0020: 7811; -- 	JNZ    Play    
+0021: 088A; -- 	LOAD   Sw
+0022: 3890; -- 	AND    Bit2
+0023: 702C; -- 	JZERO  Chk1
+0024: 0887; -- 	LOAD   Num
+0025: 5018; -- 	SHIFT  -8
+0026: 388D; -- 	AND    LowNib
+0027: 108B; -- 	STORE  Digit
+0028: 0894; -- 	LOAD   Mask2
+0029: 108C; -- 	STORE  ClrMask
+002A: 8051; -- 	CALL   TryDigit
+002B: 7811; -- 	JNZ    Play
+002C: 088A; -- 	LOAD   Sw
+002D: 388F; -- 	AND    Bit1
+002E: 7037; -- 	JZERO  Chk0
+002F: 0887; -- 	LOAD   Num
+0030: 5014; -- 	SHIFT  -4
+0031: 388D; -- 	AND    LowNib
+0032: 108B; -- 	STORE  Digit
+0033: 0895; -- 	LOAD   Mask1
+0034: 108C; -- 	STORE  ClrMask
+0035: 8051; -- 	CALL   TryDigit
+0036: 7811; -- 	JNZ    Play
+0037: 088A; -- 	LOAD   Sw
+0038: 388E; -- 	AND    Bit0
+0039: 7011; -- 	JZERO  Play
+003A: 0887; -- 	LOAD   Num
+003B: 388D; -- 	AND    LowNib
+003C: 108B; -- 	STORE  Digit
+003D: 0896; -- 	LOAD   Mask0
+003E: 108C; -- 	STORE  ClrMask
+003F: 8051; -- 	CALL   TryDigit
+0040: 5811; -- 	JUMP   Play
+0041: 8047; -- 	CALL   Poll
+0042: 7841; -- 	JNZ    EndRound     ; wait for all switches down, including SW9
+0043: 5807; -- 	JUMP   GenRandom
+0044: 9000; -- 	IN     Switches   
+0045: 9801; -- 	OUT    LEDs
+0046: 5844; -- 	JUMP   GameOver 
+0047: 9000; -- 	IN     Switches
+0048: 9801; -- 	OUT    LEDs
+0049: 1050; -- 	STORE  PollSw
+004A: 9002; -- 	IN     Timer
+004B: 379C; -- 	ADDI   -100         ; 10s equivalent
+004C: 604E; -- 	JNEG   Poll_OK
+004D: 5844; -- 	JUMP   GameOver
+004E: 0850; -- 	LOAD   PollSw
+004F: 8800; -- 	RETURN
+0050: 0000; -- PollSw:    DW 0
+0051: 088B; -- 	LOAD   Digit
+0052: 705F; -- 	JZERO  TD_Ignore    ; zero digits are ignored
+0053: 2889; -- 	SUB    Max
+0054: 7844; -- 	JNZ    GameOver     ; false answer because this is not the largest digit
+0055: 0887; -- 	LOAD   Num
+0056: 388C; -- 	AND    ClrMask
+0057: 1087; -- 	STORE  Num          ; sets correct digit to 0 based on the masks
+0058: 9804; -- 	OUT    Hex0
+0059: 0888; -- 	LOAD   Score
+005A: 3001; -- 	ADDI   1
+005B: 1088; -- 	STORE  Score
+005C: 9805; -- 	OUT    Hex1
+005D: 1801; -- 	LOADI  1
+005E: 8800; -- 	RETURN
+005F: 1800; -- 	LOADI  0
+0060: 8800; -- 	RETURN
+0061: 1800; -- 	LOADI  0
+0062: 1089; -- 	STORE  Max
+0063: 0887; -- 	LOAD   Num
+0064: 1075; -- 	STORE  FM_Work
+0065: 1804; -- 	LOADI  4
+0066: 1076; -- 	STORE  FM_Count
+0067: 0889; -- 	LOAD   Max
+0068: 1083; -- 	STORE  HN_Val1
+0069: 0875; -- 	LOAD   FM_Work
+006A: 1084; -- 	STORE  HN_Val2
+006B: 8077; -- 	CALL   HigherNibble
+006C: 1089; -- 	STORE  Max
+006D: 0875; -- 	LOAD   FM_Work
+006E: 5014; -- 	SHIFT  -4
+006F: 1075; -- 	STORE  FM_Work
+0070: 0876; -- 	LOAD   FM_Count
+0071: 37FF; -- 	ADDI   -1
+0072: 1076; -- 	STORE  FM_Count
+0073: 6867; -- 	JPOS   FM_Loop
+0074: 8800; -- 	RETURN
+0075: 0000; -- FM_Work:   DW 0
+0076: 0000; -- FM_Count:  DW 0
+0077: 0883; -- 	LOAD   HN_Val1
+0078: 3885; -- 	AND    HN_Mask
+0079: 1083; -- 	STORE  HN_Val1
+007A: 0884; -- 	LOAD   HN_Val2
+007B: 3885; -- 	AND    HN_Mask
+007C: 1084; -- 	STORE  HN_Val2
+007D: 2883; -- 	SUB    HN_Val1
+007E: 6081; -- 	JNEG   HN_Ret1
+007F: 0884; -- 	LOAD   HN_Val2
+0080: 8800; -- 	RETURN
+0081: 0883; -- 	LOAD   HN_Val1
+0082: 8800; -- 	RETURN
+0083: 0000; -- HN_Val1:   DW 0
+0084: 0000; -- HN_Val2:   DW 0
+0085: 000F; -- HN_Mask:   DW &H000F
+0086: 0000; -- Rand:      DW 0
+0087: 0000; -- Num:       DW 0
+0088: 0000; -- Score:     DW 0
+0089: 0000; -- Max:       DW 0
+008A: 0000; -- Sw:        DW 0
+008B: 0000; -- Digit:     DW 0
+008C: 0000; -- ClrMask:   DW 0
+008D: 000F; -- LowNib:    DW &H000F
+008E: 0001; -- Bit0:      DW &B0000000001
+008F: 0002; -- Bit1:      DW &B0000000010
+0090: 0004; -- Bit2:      DW &B0000000100
+0091: 0008; -- Bit3:      DW &B0000001000
+0092: 0200; -- Bit9:      DW &B1000000000
+0093: 0FFF; -- Mask3:     DW &H0FFF
+0094: F0FF; -- Mask2:     DW &HF0FF
+0095: FF0F; -- Mask1:     DW &HFF0F
+0096: FFF0; -- Mask0:     DW &HFFF0
+[0097..07FF] : 0000; -- [empty memory]
+END;
