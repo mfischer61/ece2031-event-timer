@@ -9,7 +9,8 @@
 --   0x0F0  LAP       R: last captured count        W: any value -> LAP = COUNT
 --   0x0F1  CTRL      R: bit0 = 1 running           W: bit0 = 1 run, 0 pause
 --   0x0F2  COUNTDOWN R: ticks left, stops at 0  W: load and start, 0 = cancel
---   0x0F4  STATUS    R: bit0 EXPIRED             W: write 1 to a bit to clear it
+--   0x0F3  PERIOD    R: current period          W: TICK flag every N ticks, 0 = off
+--   0x0F4  STATUS    R: bit0 EXPIRED, bit1 TICK  W: write 1 to a bit to clear it
 --
 -- Pause (CTRL bit0 = 0) freezes all time in the peripheral, including the
 -- partial tick in progress, so resume picks up exactly where it stopped.
@@ -49,6 +50,7 @@ ARCHITECTURE a OF TIMER IS
 	CONSTANT LAP_ADDR    : STD_LOGIC_VECTOR(10 DOWNTO 0) := "00011110000"; -- 0x0F0
 	CONSTANT CTRL_ADDR   : STD_LOGIC_VECTOR(10 DOWNTO 0) := "00011110001"; -- 0x0F1
 	CONSTANT CDOWN_ADDR  : STD_LOGIC_VECTOR(10 DOWNTO 0) := "00011110010"; -- 0x0F2
+	CONSTANT PERIOD_ADDR : STD_LOGIC_VECTOR(10 DOWNTO 0) := "00011110011"; -- 0x0F3
 	CONSTANT STATUS_ADDR : STD_LOGIC_VECTOR(10 DOWNTO 0) := "00011110100"; -- 0x0F4
 
 
@@ -62,6 +64,10 @@ ARCHITECTURE a OF TIMER IS
 	SIGNAL RUN       : STD_LOGIC;  -- '1' = counting, '0' = paused
 	SIGNAL CDOWN     : STD_LOGIC_VECTOR(15 DOWNTO 0);
 	SIGNAL EXPIRED   : STD_LOGIC;  -- sticky: countdown reached 0
+	SIGNAL PERIOD    : STD_LOGIC_VECTOR(15 DOWNTO 0);
+  	SIGNAL PHASE     : STD_LOGIC_VECTOR(15 DOWNTO 0);  -- ticks since last TICK flag
+  	SIGNAL PTICK     : STD_LOGIC;  -- sticky: a period elapsed
+
 
 
 	-- Address decode and bus control
@@ -69,6 +75,7 @@ ARCHITECTURE a OF TIMER IS
 	SIGNAL LAP_SEL    : STD_LOGIC;
 	SIGNAL CTRL_SEL   : STD_LOGIC;
 	SIGNAL CDOWN_SEL  : STD_LOGIC;
+	SIGNAL PERIOD_SEL : STD_LOGIC;
 	SIGNAL STATUS_SEL : STD_LOGIC;
 	SIGNAL ANY_SEL    : STD_LOGIC;
 	SIGNAL OUT_DATA   : STD_LOGIC_VECTOR(15 DOWNTO 0);
@@ -82,7 +89,9 @@ ARCHITECTURE a OF TIMER IS
 	CTRL_SEL   <= '1' WHEN IO_ADDR = CTRL_ADDR   ELSE '0';
 	CDOWN_SEL  <= '1' WHEN IO_ADDR = CDOWN_ADDR  ELSE '0';
 	STATUS_SEL <= '1' WHEN IO_ADDR = STATUS_ADDR ELSE '0';
-	ANY_SEL    <= TIMER_SEL OR LAP_SEL OR CTRL_SEL OR CDOWN_SEL OR STATUS_SEL;
+	PERIOD_SEL <= '1' WHEN IO_ADDR = PERIOD_ADDR ELSE '0';
+	ANY_SEL    <= TIMER_SEL OR LAP_SEL OR CTRL_SEL OR CDOWN_SEL OR PERIOD_SEL OR STATUS_SEL;
+
 
 
 
@@ -183,13 +192,45 @@ ARCHITECTURE a OF TIMER IS
 		END IF;
 	END PROCESS;
 
+	
+
+	-- PERIOD (0x0F3) and the TICK flag (STATUS bit 1)
+	PROCESS (CLOCK, RESETN)
+	BEGIN
+		IF (RESETN = '0') THEN
+			PERIOD <= x"0000";
+			PHASE  <= x"0000";
+			PTICK  <= '0';
+		ELSIF (rising_edge(CLOCK)) THEN
+			IF (PERIOD_SEL = '1') AND (IO_WRITE = '1') THEN
+				PERIOD <= IO_DATA;    -- 0 turns the periodic flag off
+				PHASE  <= x"0000";    -- first flag comes one full period later
+				PTICK  <= '0';
+			ELSE
+				IF (STATUS_SEL = '1') AND (IO_WRITE = '1') AND (IO_DATA(1) = '1') THEN
+					PTICK <= '0';         -- write 1 to clear
+				END IF;
+				IF (TICK = '1') AND (PERIOD /= x"0000") THEN
+					IF (PHASE >= PERIOD - 1) THEN
+						PHASE <= x"0000";
+						PTICK <= '1';     -- last assignment wins: set beats clear
+					ELSE
+						PHASE <= PHASE + 1;
+					END IF;
+				END IF;
+			END IF;
+		END IF;
+	END PROCESS;
+
 
 	-- Read mux: pick the register for the address being read
 	OUT_DATA <= LAP                                WHEN LAP_SEL    = '1' ELSE
 	            "000000000000000" & RUN            WHEN CTRL_SEL   = '1' ELSE
 	            CDOWN                              WHEN CDOWN_SEL  = '1' ELSE
-	            "000000000000000" & EXPIRED        WHEN STATUS_SEL = '1' ELSE
+	            PERIOD                             WHEN PERIOD_SEL = '1' ELSE
+	            "00000000000000" & PTICK & EXPIRED WHEN STATUS_SEL = '1' ELSE
 	            COUNT;
+
 
 
 	-- Drive IO_DATA only when one of our addresses is being read

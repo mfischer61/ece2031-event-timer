@@ -177,6 +177,47 @@ Wait4:
            AND Bit0
            JNZ Fail ; a cancel must not set EXPIRED
            
+           ; ---------- periodic tick for PEIORD + STATUS bit 1
+           
+; Test 15: period 5 sets TICK three times in about 1.5 s
+           LOADI 15
+           STORE TestNum
+           LOADI 5
+           OUT Period ; flag every 0.5 s
+           OUT Timer
+           IN Period
+           ADDI -5
+           JNZ Fail ; PERIOD must read back
+           LOADI 3
+           STORE Ticks
+Wait5: 
+           IN Status
+           AND Bit1
+           JZERO Wait5
+           LOAD Bit1
+           OUT Status ; clear TICK
+           LOAD Ticks
+           ADDI -1
+           STORE Ticks
+           JPOS Wait5
+           IN Timer
+           ADDI -14
+           JNEG Fail ; 3 periods = 15 ticks
+           IN Timer
+           ADDI -16
+           JPOS Fail
+           
+; Test 16: period 0 turns the tick flag off
+           LOADI 16
+           STORE TestNum
+           LOADI 0
+           OUT Period
+           CALL SoftDelay
+           CALL SoftDelay ; about 1 s, two of the old 0.5 s periods
+           IN Status
+           AND Bit1
+           JNZ Fail
+           
            
 Pass: 
            LOAD Good
@@ -244,7 +285,8 @@ PrevSw: DW 0
 CurSw: DW 0
 Held: DW 0
 DlyOuter: DW 0
-           
+Ticks: DW 0
+Bit1: DW &B0000000010
            
            ; Useful values
 Good: DW 24589 ; &H600D
@@ -261,5 +303,6 @@ Lap: EQU 240 ; 0x0F0
 Ctrl: EQU 241 ; 0x0F1
 Cdown: EQU 242 ; 0x0F2
 Status: EQU 244 ; 0x0F4
+Period: EQU 243 ; 0x0F3
            
            
