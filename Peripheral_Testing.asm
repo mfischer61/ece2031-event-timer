@@ -105,6 +105,79 @@ Wait3:
            ADDI -3
            JNEG Fail ; should be about Held + 5
            
+           ; ---this is all of the tests for Countdown and clears EXPIRED
+           
+; Test 10: loading a countdown reads back and clears EXPIRED
+           LOADI 10
+           STORE TestNum
+           LOADI 20
+           OUT Cdown ; 2.0 s countdown
+           OUT Timer ; time it with the stopwatch
+           IN Status
+           AND Bit0
+           JNZ Fail ; EXPIRED must be clear right after a load
+           IN Cdown
+           ADDI -19
+           JNEG Fail ; should read 19 or 20
+           
+; Test 11: EXPIRED sets when the countdown reaches 0, 2 s later
+           LOADI 11
+           STORE TestNum
+Wait4: 
+           IN Status
+           AND Bit0
+           JZERO Wait4 ; this is the whole "wait for countdown" loop
+           IN Timer
+           ADDI -19
+           JNEG Fail ; expired too early
+           IN Timer
+           ADDI -21
+           JPOS Fail ; expired too late
+           IN Cdown
+           JNZ Fail ; must read 0 once expired
+           
+; Test 12: countdown stays at 0 and EXPIRED stays set
+           LOADI 12
+           STORE TestNum
+           CALL SoftDelay
+           IN Cdown
+           JNZ Fail ; wrapped below 0
+           IN Status
+           AND Bit0
+           JZERO Fail ; flag must be sticky
+           
+; Test 13: writing 1 to STATUS bit 0 clears EXPIRED
+           LOADI 13
+           STORE TestNum
+           LOAD Bit0
+           OUT Status
+           IN Status
+           AND Bit0
+           JNZ Fail
+           
+; Test 14: pause freezes the countdown; writing 0 cancels it
+           LOADI 14
+           STORE TestNum
+           LOADI 50
+           OUT Cdown
+           LOADI 0
+           OUT Ctrl ; pause
+           IN Cdown
+           STORE Held
+           CALL SoftDelay
+           IN Cdown
+           SUB Held
+           JNZ Fail ; countdown moved while paused
+           LOADI 1
+           OUT Ctrl ; resume
+           LOADI 0
+           OUT Cdown ; cancel
+           CALL SoftDelay
+           IN Status
+           AND Bit0
+           JNZ Fail ; a cancel must not set EXPIRED
+           
+           
 Pass: 
            LOAD Good
            OUT Hex0 ; show 600D for 2 seconds
@@ -186,4 +259,7 @@ Hex0: EQU 004
 Hex1: EQU 005
 Lap: EQU 240 ; 0x0F0
 Ctrl: EQU 241 ; 0x0F1
+Cdown: EQU 242 ; 0x0F2
+Status: EQU 244 ; 0x0F4
+           
            

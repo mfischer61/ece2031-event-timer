@@ -8,6 +8,8 @@
 --   0x002  COUNT     R: ticks since last reset     W: any value -> COUNT = 0
 --   0x0F0  LAP       R: last captured count        W: any value -> LAP = COUNT
 --   0x0F1  CTRL      R: bit0 = 1 running           W: bit0 = 1 run, 0 pause
+--   0x0F2  COUNTDOWN R: ticks left, stops at 0  W: load and start, 0 = cancel
+--   0x0F4  STATUS    R: bit0 EXPIRED             W: write 1 to a bit to clear it
 --
 -- Pause (CTRL bit0 = 0) freezes all time in the peripheral, including the
 -- partial tick in progress, so resume picks up exactly where it stopped.
@@ -46,6 +48,9 @@ ARCHITECTURE a OF TIMER IS
 	CONSTANT TIMER_ADDR  : STD_LOGIC_VECTOR(10 DOWNTO 0) := "00000000010"; -- 0x002
 	CONSTANT LAP_ADDR    : STD_LOGIC_VECTOR(10 DOWNTO 0) := "00011110000"; -- 0x0F0
 	CONSTANT CTRL_ADDR   : STD_LOGIC_VECTOR(10 DOWNTO 0) := "00011110001"; -- 0x0F1
+	CONSTANT CDOWN_ADDR  : STD_LOGIC_VECTOR(10 DOWNTO 0) := "00011110010"; -- 0x0F2
+	CONSTANT STATUS_ADDR : STD_LOGIC_VECTOR(10 DOWNTO 0) := "00011110100"; -- 0x0F4
+
 
 	-- Time base
 	SIGNAL PRESCALE  : INTEGER RANGE 0 TO TICK_DIV-1;
@@ -55,11 +60,16 @@ ARCHITECTURE a OF TIMER IS
 	SIGNAL COUNT     : STD_LOGIC_VECTOR(15 DOWNTO 0);
 	SIGNAL LAP       : STD_LOGIC_VECTOR(15 DOWNTO 0);
 	SIGNAL RUN       : STD_LOGIC;  -- '1' = counting, '0' = paused
+	SIGNAL CDOWN     : STD_LOGIC_VECTOR(15 DOWNTO 0);
+	SIGNAL EXPIRED   : STD_LOGIC;  -- sticky: countdown reached 0
+
 
 	-- Address decode and bus control
 	SIGNAL TIMER_SEL  : STD_LOGIC;
 	SIGNAL LAP_SEL    : STD_LOGIC;
 	SIGNAL CTRL_SEL   : STD_LOGIC;
+	SIGNAL CDOWN_SEL  : STD_LOGIC;
+	SIGNAL STATUS_SEL : STD_LOGIC;
 	SIGNAL ANY_SEL    : STD_LOGIC;
 	SIGNAL OUT_DATA   : STD_LOGIC_VECTOR(15 DOWNTO 0);
 	SIGNAL IO_EN      : STD_LOGIC;
@@ -70,7 +80,10 @@ ARCHITECTURE a OF TIMER IS
 	TIMER_SEL  <= '1' WHEN IO_ADDR = TIMER_ADDR  ELSE '0';
 	LAP_SEL    <= '1' WHEN IO_ADDR = LAP_ADDR    ELSE '0';
 	CTRL_SEL   <= '1' WHEN IO_ADDR = CTRL_ADDR   ELSE '0';
-	ANY_SEL    <= TIMER_SEL OR LAP_SEL OR CTRL_SEL;
+	CDOWN_SEL  <= '1' WHEN IO_ADDR = CDOWN_ADDR  ELSE '0';
+	STATUS_SEL <= '1' WHEN IO_ADDR = STATUS_ADDR ELSE '0';
+	ANY_SEL    <= TIMER_SEL OR LAP_SEL OR CTRL_SEL OR CDOWN_SEL OR STATUS_SEL;
+
 
 
 	-- Use LPM function to create bidirection I/O data bus
@@ -144,11 +157,40 @@ ARCHITECTURE a OF TIMER IS
 		END IF;
 	END PROCESS;
 
+	
+
+	-- COUNTDOWN (0x0F2) and the EXPIRED flag (STATUS bit 0)
+	PROCESS (CLOCK, RESETN)
+	BEGIN
+		IF (RESETN = '0') THEN
+			CDOWN   <= x"0000";
+			EXPIRED <= '0';
+		ELSIF (rising_edge(CLOCK)) THEN
+			IF (CDOWN_SEL = '1') AND (IO_WRITE = '1') THEN
+				CDOWN   <= IO_DATA;   -- load and start (0 cancels)
+				EXPIRED <= '0';       -- a new countdown clears the old flag
+			ELSE
+				IF (TICK = '1') AND (CDOWN /= x"0000") THEN
+					CDOWN <= CDOWN - 1;   -- stops at 0, never wraps
+				END IF;
+				IF (STATUS_SEL = '1') AND (IO_WRITE = '1') AND (IO_DATA(0) = '1') THEN
+					EXPIRED <= '0';       -- write 1 to clear
+				END IF;
+				IF (TICK = '1') AND (CDOWN = x"0001") THEN
+					EXPIRED <= '1';       -- last assignment wins: set beats clear
+				END IF;
+			END IF;
+		END IF;
+	END PROCESS;
+
 
 	-- Read mux: pick the register for the address being read
 	OUT_DATA <= LAP                                WHEN LAP_SEL    = '1' ELSE
 	            "000000000000000" & RUN            WHEN CTRL_SEL   = '1' ELSE
+	            CDOWN                              WHEN CDOWN_SEL  = '1' ELSE
+	            "000000000000000" & EXPIRED        WHEN STATUS_SEL = '1' ELSE
 	            COUNT;
+
 
 	-- Drive IO_DATA only when one of our addresses is being read
 	IO_EN <= ANY_SEL AND IO_READ;
