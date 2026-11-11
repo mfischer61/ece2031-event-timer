@@ -845,7 +845,7 @@ on the Quartus Prime software download page.
 	(pt 736 704)
 )
 (connector
-	(text "clock_10MHz" (rect 234 528 295 539)(font "Intel Clear" ))
+	(text "clk_10MHz" (rect 234 528 284 539)(font "Intel Clear" ))
 	(pt 224 544)
 	(pt 304 544)
 )
@@ -857,7 +857,7 @@ on the Quartus Prime software download page.
 	(section (rect 0 48 368 72)(text "DESIGNER" (rect 2 0 57 11)(font "Arial" ))(text "Kevin Johnson, Tom Collins" (rect 56 2 290 20)(font "Arial" (font_size 12)))(border))
 	(section (rect 0 72 280 96)(text "NUMBER" (rect 2 0 48 11)(font "Arial" ))(text "1.00" (rect 56 1 86 16)(font "Arial" (font_size 10)))(border))
 	(section (rect 280 72 368 96)(text "REV" (rect 2 1 24 12)(font "Arial" ))(text "A" (rect 43 1 53 16)(font "Arial" (font_size 10)))(border))
-	(section (rect 0 96 240 120)(text "DATE" (rect 2 0 30 11)(font "Arial" ))(text "Wed Nov 11 17:03:40 2026" (rect 56 3 243 18)(font "Arial" (font_size 10)))(date)(border))
+	(section (rect 0 96 240 120)(text "DATE" (rect 2 0 30 11)(font "Arial" ))(text "Wed Nov 11 17:33:08 2026" (rect 56 3 243 18)(font "Arial" (font_size 10)))(date)(border))
 	(section (rect 240 96 310 120)(text "SHEET" (rect 2 0 37 11)(font "Arial" ))(text "1" (rect 55 5 64 20)(font "Arial" (font_size 10))))
 	(section (rect 310 96 368 120)(text "OF" (rect 10 0 25 11)(font "Arial" ))(text "1" (rect 34 4 43 19)(font "Arial" (font_size 10))))
 	(drawing
