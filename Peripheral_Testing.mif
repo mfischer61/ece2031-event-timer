@@ -1,0 +1,95 @@
+WIDTH=16;
+DEPTH=2048;
+
+ADDRESS_RADIX=HEX;
+DATA_RADIX=HEX;
+
+CONTENT BEGIN
+0000: 1801; -- 	LOADI  1
+0001: 104E; -- 	STORE  TestNum
+0002: 90F0; -- 	IN     Lap
+0003: 7849; -- 	JNZ    Fail
+0004: 1802; -- 	LOADI  2
+0005: 104E; -- 	STORE  TestNum
+0006: 9802; -- 	OUT    Timer
+0007: 9002; -- 	IN     Timer
+0008: 37EC; -- 	ADDI   -20
+0009: 6007; -- 	JNEG   Wait1        ; wait until count >= 20 (2 s at 10 Hz)
+000A: 98F0; -- 	OUT    Lap          ; take a lap
+000B: 90F0; -- 	IN     Lap
+000C: 104F; -- 	STORE  Lap1
+000D: 37EC; -- 	ADDI   -20
+000E: 6049; -- 	JNEG   Fail         ; lap < 20: count wasn't captured
+000F: 084F; -- 	LOAD   Lap1
+0010: 37EA; -- 	ADDI   -22
+0011: 6849; -- 	JPOS   Fail         ; lap > 22: captured something other than the count
+0012: 1803; -- 	LOADI  3
+0013: 104E; -- 	STORE  TestNum
+0014: 9002; -- 	IN     Timer
+0015: 284F; -- 	SUB    Lap1
+0016: 6049; -- 	JNEG   Fail         ; timer went below the lap value, so it was reset
+0017: 1804; -- 	LOADI  4
+0018: 104E; -- 	STORE  TestNum
+0019: 9002; -- 	IN     Timer
+001A: 37D8; -- 	ADDI   -40
+001B: 6019; -- 	JNEG   Wait2        ; wait until 4 s
+001C: 90F0; -- 	IN     Lap
+001D: 284F; -- 	SUB    Lap1
+001E: 7849; -- 	JNZ    Fail         ; lap changed without a new lap write
+001F: 1805; -- 	LOADI  5
+0020: 104E; -- 	STORE  TestNum
+0021: 98F0; -- 	OUT    Lap
+0022: 90F0; -- 	IN     Lap
+0023: 1050; -- 	STORE  Lap2
+0024: 284F; -- 	SUB    Lap1
+0025: 37F1; -- 	ADDI   -15
+0026: 6049; -- 	JNEG   Fail         ; second lap should be about 20 ticks later
+0027: 1806; -- 	LOADI  6
+0028: 104E; -- 	STORE  TestNum
+0029: 9802; -- 	OUT    Timer
+002A: 90F0; -- 	IN     Lap
+002B: 2850; -- 	SUB    Lap2
+002C: 7849; -- 	JNZ    Fail         ; timer reset changed the lap register
+002D: 9002; -- 	IN     Timer
+002E: 37FB; -- 	ADDI   -5
+002F: 6849; -- 	JPOS   Fail         ; count should be near 0 right after a reset
+0030: 0853; -- 	LOAD   Good
+0031: 9804; -- 	OUT    Hex0         ; show 600D for 2 seconds
+0032: 9802; -- 	OUT    Timer
+0033: 9002; -- 	IN     Timer
+0034: 37EC; -- 	ADDI   -20
+0035: 6033; -- 	JNEG   ShowPass
+0036: 1800; -- 	LOADI  0
+0037: 1051; -- 	STORE  PrevSw
+0038: 9805; -- 	OUT    Hex1
+0039: 9802; -- 	OUT    Timer
+003A: 9002; -- 	IN     Timer
+003B: 9804; -- 	OUT    Hex0         ; live count
+003C: 9000; -- 	IN     Switches
+003D: 9801; -- 	OUT    LEDs
+003E: 3855; -- 	AND    Bit0
+003F: 1052; -- 	STORE  CurSw
+0040: 2851; -- 	SUB    PrevSw       ; 1 only when SW0 just went from down to up
+0041: 6845; -- 	JPOS   DoLap
+0042: 0852; -- 	LOAD   CurSw
+0043: 1051; -- 	STORE  PrevSw
+0044: 583A; -- 	JUMP   Live
+0045: 98F0; -- 	OUT    Lap
+0046: 90F0; -- 	IN     Lap
+0047: 9805; -- 	OUT    Hex1         ; lap time (low 8 bits)
+0048: 5842; -- 	JUMP   Continue
+0049: 084E; -- 	LOAD   TestNum
+004A: 9805; -- 	OUT    Hex1         ; which test failed
+004B: 0854; -- 	LOAD   ErrCode
+004C: 9804; -- 	OUT    Hex0
+004D: 5849; -- 	JUMP   Fail
+004E: 0000; -- TestNum:   DW 0
+004F: 0000; -- Lap1:      DW 0
+0050: 0000; -- Lap2:      DW 0
+0051: 0000; -- PrevSw:    DW 0
+0052: 0000; -- CurSw:     DW 0
+0053: 600D; -- Good:      DW 24589     ; &H600D
+0054: EEEE; -- ErrCode:   DW -4370     ; &HEEEE
+0055: 0001; -- Bit0:      DW &B0000000001
+[0056..07FF] : 0000; -- [empty memory]
+END;
