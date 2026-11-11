@@ -1,0 +1,102 @@
+WIDTH=16;
+DEPTH=2048;
+
+ADDRESS_RADIX=HEX;
+DATA_RADIX=HEX;
+
+CONTENT BEGIN
+0000: 1803; --           LOADI 3
+0001: 98F3; --           OUT Period ; TICK flag every 0.3 s
+0002: 1800; --           LOADI 0
+0003: 9802; --           OUT Timer
+0004: 9805; --           OUT Hex1
+0005: 1052; --           STORE PrevSw
+0006: 1055; --           STORE LastLap
+0007: 1057; --           STORE Dir
+0008: 1801; --           LOADI 1
+0009: 1056; --           STORE Pattern
+000A: 90F4; --           IN Status
+000B: 3859; --           AND Bit1
+000C: 7010; --           JZERO NoTick
+000D: 0859; --           LOAD Bit1
+000E: 98F4; --           OUT Status ; clear TICK
+000F: 803E; --           CALL StepLED
+0010: 90F4; --           IN Status
+0011: 3858; --           AND Bit0
+0012: 7017; --           JZERO NoExpire
+0013: 0858; --           LOAD Bit0
+0014: 98F4; --           OUT Status ; clear EXPIRED
+0015: 1BFF; --           LOADI 1023 ; &H3FF = all ten LEDs
+0016: 9801; --           OUT LEDs ; flash until the next animation step
+0017: 9000; --           IN Switches
+0018: 1053; --           STORE CurSw
+0019: 4852; --           XOR PrevSw
+001A: 3853; --           AND CurSw
+001B: 1054; --           STORE Rise
+001C: 0853; --           LOAD CurSw
+001D: 1052; --           STORE PrevSw
+001E: 0854; --           LOAD Rise
+001F: 3858; --           AND Bit0
+0020: 7024; --           JZERO NoLap
+0021: 98F0; -- OUT Lap ; SW0: take a lap
+0022: 90F0; --           IN Lap
+0023: 1055; --           STORE LastLap
+0024: 0854; --           LOAD Rise
+0025: 385A; --           AND Bit2
+0026: 7029; --           JZERO NoStart
+0027: 1832; --           LOADI 50
+0028: 98F2; -- OUT Cdown ; SW2: start a 5.0 s countdown
+0029: 0854; --           LOAD Rise
+002A: 385B; --           AND Bit3
+002B: 702D; --           JZERO NoReset
+002C: 9802; -- OUT Timer ; SW3: reset the stopwatch
+002D: 0853; --           LOAD CurSw
+002E: 3859; --           AND Bit1
+002F: 7033; --           JZERO Running
+0030: 1800; --           LOADI 0
+0031: 98F1; -- OUT Ctrl ; SW1 up: pause all time
+0032: 5835; --           JUMP Display
+0033: 1801; --           LOADI 1
+0034: 98F1; -- OUT Ctrl ; SW1 down: run
+0035: 9002; --           IN Timer
+0036: 9804; --           OUT Hex0 ; stopwatch
+0037: 90F2; --           IN Cdown
+0038: 703B; --           JZERO ShowLap ; no countdown running
+0039: 9805; --           OUT Hex1 ; time left
+003A: 580A; --           JUMP Loop
+003B: 0855; --           LOAD LastLap
+003C: 9805; --           OUT Hex1
+003D: 580A; --           JUMP Loop
+003E: 0857; --           LOAD Dir
+003F: 7848; --           JNZ GoRight
+0040: 0856; --           LOAD Pattern
+0041: 5001; --           SHIFT 1
+0042: 1056; --           STORE Pattern
+0043: 385C; --           AND Bit9
+0044: 704F; --           JZERO ShowLED
+0045: 1801; --           LOADI 1
+0046: 1057; --           STORE Dir ; reached LED9, turn around
+0047: 584F; --           JUMP ShowLED
+0048: 0856; --           LOAD Pattern
+0049: 5011; --           SHIFT -1
+004A: 1056; --           STORE Pattern
+004B: 3858; --           AND Bit0
+004C: 704F; --           JZERO ShowLED
+004D: 1800; --           LOADI 0
+004E: 1057; --           STORE Dir ; reached LED0, turn around
+004F: 0856; --           LOAD Pattern
+0050: 9801; --           OUT LEDs
+0051: 8800; --           RETURN
+0052: 0000; -- PrevSw: DW 0
+0053: 0000; -- CurSw: DW 0
+0054: 0000; -- Rise: DW 0
+0055: 0000; -- LastLap: DW 0
+0056: 0001; -- Pattern: DW 1
+0057: 0000; -- Dir: DW 0
+0058: 0001; -- Bit0: DW &B0000000001
+0059: 0002; -- Bit1: DW &B0000000010
+005A: 0004; -- Bit2: DW &B0000000100
+005B: 0008; -- Bit3: DW &B0000001000
+005C: 0200; -- Bit9: DW &B1000000000
+[005D..07FF] : 0000; -- [empty memory]
+END;
