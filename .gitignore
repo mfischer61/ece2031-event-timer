@@ -1,0 +1,10 @@
+# Quartus build output (regenerated on every compile)
+db/
+incremental_db/
+output_files/
+simulation/
+greybox_tmp/
+*.qws
+*.rpt
+*.bak
+c5_pin_model_dump.txt
